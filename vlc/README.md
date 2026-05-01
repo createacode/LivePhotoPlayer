@@ -20,6 +20,7 @@ You can obtain the VLC components from the following sources:
   [Download VLC for Windows](https://www.videolan.org/vlc/download-windows.html)
 - **Releases Page / Releases 页面:**
   Check the repository's "Releases" section for pre-packaged dependencies.
+  [VLC组件下载地址](https://github.com/createacode/LivePhotoPlayer/releases/download/V3.18.0/vlc_up.zip)
   查看本仓库的 "Releases" 页面以获取打包好的依赖文件。
 
 > **️ Important / 重要提示:**
