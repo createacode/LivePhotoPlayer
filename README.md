@@ -9,6 +9,10 @@
 
 ---
 
+![软件界面](https://github.com/createacode/LivePhotoPlayer/blob/main/Screenshots.png)
+
+---
+
 ## 1. 项目概述
 
 实况照片播放器是一款专门用于播放主流手机厂商（以 OPPO 为代表）拍摄的实况照片的桌面应用程序。软件基于 Python 3.13 开发，采用 PyQt5 构建图形界面，能够：
