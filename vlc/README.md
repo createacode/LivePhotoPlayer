@@ -26,6 +26,7 @@ You can obtain the VLC components from the following sources:
   ↓↓↓
   
   [VLC组件下载地址](https://github.com/createacode/LivePhotoPlayer/releases/download/V3.18.0/vlc_up.zip)
+
   
 
 > **️ Important / 重要提示:**
