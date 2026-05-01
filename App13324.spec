@@ -2,31 +2,32 @@
 
 """
 PyInstaller 打包配置文件 - 实况照片播放器
-版本: 3.18.0
+版本: 3.21.0
 作者: XAF
-日期: 2026-05-01
+日期: 2026-05-02
 """
 
 import sys
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 from PyInstaller.utils.win32.versioninfo import (
     VSVersionInfo, StringFileInfo, StringTable, StringStruct,
     VarFileInfo, VarStruct, FixedFileInfo
 )
 
 APP_NAME = 'App13324'
-APP_VERSION = '3.18.0'
+APP_VERSION = '3.21.0'
 APP_COPYRIGHT = 'Copyright © XAF 2026.4'
 APP_DESCRIPTION = '实况照片播放器 - 支持 OPPO 实况照片、视频播放、文件管理'
 APP_ICON = 'app.ico'
 
-# 数据文件
+# 数据文件：vlc 运行时库、封面图片、应用图标
 datas = [
     ('vlc', 'vlc'),
-    ('app.ico', '.'),
     ('cover', 'cover'),
+    ('app.ico', '.'),
 ]
 
-# 隐藏导入（移除不存在的模块）
+# 隐藏导入（解决模块遗漏）
 hiddenimports = [
     'PIL._tkinter_finder',
     'PIL._webp',
@@ -43,7 +44,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[],          # 可按需排除不需要的模块以减小体积
     noarchive=False,
     optimize=0,
 )
@@ -53,8 +54,8 @@ pyz = PYZ(a.pure)
 # Windows 版本资源
 version_info = VSVersionInfo(
     ffi=FixedFileInfo(
-        filevers=(3, 18, 0, 0),
-        prodvers=(3, 18, 0, 0),
+        filevers=(3, 21, 0, 0),
+        prodvers=(3, 21, 0, 0),
         mask=0x3F,
         flags=0x0,
         OS=0x40004,
@@ -89,15 +90,15 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=True,                     # 启用 UPX 压缩（需安装 UPX）
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=False,                # 不显示控制台窗口
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
     icon=[APP_ICON],
-    version=version_info,   # 正确添加版本信息
+    version=version_info,         # 嵌入版本资源
 )

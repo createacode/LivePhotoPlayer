@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-实况照片播放器 - 最终版（修复视频播放结束自动回封面）
+实况照片播放器 - 最终版（居中启动 + 延迟加载）
+版本: 3.18.0
 """
 
 import sys
@@ -99,14 +100,6 @@ class ConfigManager:
         self.data['window_height'] = height
         self.save()
 
-    def get_window_pos(self):
-        return self.data.get('window_x', -1), self.data.get('window_y', -1)
-
-    def set_window_pos(self, x, y):
-        self.data['window_x'] = x
-        self.data['window_y'] = y
-        self.save()
-
     def get_speed_index(self):
         return self.data.get('speed_index', 3)
 
@@ -119,6 +112,13 @@ class ConfigManager:
 
     def set_mute_state(self, muted):
         self.data['mute_state'] = muted
+        self.save()
+
+    def get_auto_play(self):
+        return self.data.get('auto_play', False)
+
+    def set_auto_play(self, enabled):
+        self.data['auto_play'] = enabled
         self.save()
 
 
@@ -476,6 +476,7 @@ class LivePhotoPlayer(QMainWindow):
         self._initializing = False
         self.video_cover_label = None
         self.is_live_photo = False
+        self.auto_play_mode = config.get_auto_play()
 
         self.init_ui()
         self.init_tray()
@@ -483,22 +484,15 @@ class LivePhotoPlayer(QMainWindow):
         self.create_shortcuts()
         self.setAcceptDrops(True)
 
-        # 先加载配置并设置位置、大小（在 show 之前）
+        # 读取窗口大小（不读取位置）
         win_w, win_h = config.get_window_size()
-        win_x, win_y = config.get_window_pos()
         self.resize(win_w, win_h)
+        # 强制居中显示
         screen_geom = QApplication.primaryScreen().geometry()
-        valid = (win_x >= 0 and win_y >= 0 and
-                 win_x + win_w <= screen_geom.width() and
-                 win_y + win_h <= screen_geom.height())
-        if valid:
-            self.move(win_x, win_y)
-            logger.info(f"窗口位置加载: ({win_x}, {win_y}), 大小: {win_w}x{win_h}")
-        else:
-            default_x = (screen_geom.width() - win_w) // 2
-            default_y = (screen_geom.height() - win_h) // 2
-            self.move(default_x, default_y)
-            logger.info(f"窗口位置无效，使用默认居中: ({default_x}, {default_y}), 大小: {win_w}x{win_h}")
+        center_x = (screen_geom.width() - win_w) // 2
+        center_y = (screen_geom.height() - win_h) // 2
+        self.move(center_x, center_y)
+        logger.info(f"窗口居中: ({center_x}, {center_y}), 大小: {win_w}x{win_h}")
 
         speed_idx = config.get_speed_index()
         if hasattr(self, 'speed_combo') and self.speed_combo.count() > speed_idx:
@@ -507,8 +501,9 @@ class LivePhotoPlayer(QMainWindow):
         if hasattr(self, 'mute_btn'):
             self.mute_btn.setChecked(mute_state)
 
+        # 延迟加载初始文件（防止卡死）
         if initial_file and os.path.isfile(initial_file):
-            self.load_file(initial_file)
+            QTimer.singleShot(100, lambda: self.load_file(initial_file))
 
         QTimer.singleShot(0, self._fix_initial_statusbar_layout)
 
@@ -545,7 +540,6 @@ class LivePhotoPlayer(QMainWindow):
 
         self.video_frame = QFrame()
         self.video_frame.setStyleSheet("background-color: black; border: none;")
-        # 视频封面标签 - 铺满且居中文字
         self.video_cover_label = QLabel(self.video_frame)
         self.video_cover_label.setAlignment(Qt.AlignCenter)
         self.video_cover_label.setStyleSheet("""
@@ -561,7 +555,7 @@ class LivePhotoPlayer(QMainWindow):
         self.video_cover_label.mouseDoubleClickEvent = self.on_cover_mouse_double_click
         self.video_cover_label.setContextMenuPolicy(Qt.CustomContextMenu)
         self.video_cover_label.customContextMenuRequested.connect(self.show_cover_context_menu)
-        self.video_cover_label.setVisible(False)  # 初始不可见，仅外部视频时显示
+        self.video_cover_label.setVisible(False)
 
         self.video_frame.mousePressEvent = self.on_video_frame_mouse_press
         self.video_frame.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -588,7 +582,6 @@ class LivePhotoPlayer(QMainWindow):
         self.image_view.sig_open_file.connect(self.open_file_dialog)
 
     def load_video_cover_image(self):
-        """封面图片拉伸填充，无底色；若无图片则显示居中文字"""
         if not self.video_cover_label:
             return
         self.video_cover_label.resize(self.video_frame.size())
@@ -865,10 +858,11 @@ class LivePhotoPlayer(QMainWindow):
             if self.video_cover_label.isVisible():
                 self.load_video_cover_image()
 
-    def moveEvent(self, event):
-        super().moveEvent(event)
-        if not self._initializing:
-            config.set_window_pos(self.x(), self.y())
+    # 不再保存窗口位置
+    # def moveEvent(self, event):
+    #     super().moveEvent(event)
+    #     if not self._initializing:
+    #         config.set_window_pos(self.x(), self.y())
 
     def on_speed_changed(self, text):
         idx = self.speed_combo.currentIndex()
@@ -926,13 +920,15 @@ class LivePhotoPlayer(QMainWindow):
         self.msg_label.setText("")
         self.stacked.setCurrentWidget(self.image_scroll)
 
-        # 重置窗口大小和位置到默认
+        # 重置窗口大小到默认并居中
         default_w, default_h = 800, 600
         self.resize(default_w, default_h)
         screen = QApplication.primaryScreen().geometry()
         default_x = (screen.width() - default_w) // 2
         default_y = (screen.height() - default_h) // 2
         self.move(default_x, default_y)
+        config.set_window_size(default_w, default_h)
+        # 不保存位置
 
         default_speed_idx = 3
         self.speed_combo.setCurrentIndex(default_speed_idx)
@@ -1044,11 +1040,9 @@ class LivePhotoPlayer(QMainWindow):
             self.is_playing = False
             self.play_pause_btn.setText("▶️ 播放")
             if self.is_live_photo:
-                # 实况照片：停止后回到图片视图
                 self.stacked.setCurrentWidget(self.image_scroll)
                 self.status_text.setText("✅ 已停止")
             else:
-                # 外部视频：停止后显示封面
                 self.stacked.setCurrentWidget(self.video_frame)
                 self.status_text.setText("⏹️ 已停止")
                 if self.video_cover_label:
@@ -1062,7 +1056,6 @@ class LivePhotoPlayer(QMainWindow):
             self.show_temp_message("无视频", 2000)
             return
 
-        # 实况照片：直接播放/暂停，无封面逻辑
         if self.is_live_photo:
             if self.is_playing:
                 self.vlc_player.pause()
@@ -1085,7 +1078,7 @@ class LivePhotoPlayer(QMainWindow):
                 self.vlc_player.event_manager().event_attach(vlc.EventType.MediaPlayerEndReached, self.on_playback_end)
             return
 
-        # 外部视频：封面逻辑
+        # 外部视频
         if self.video_cover_label.isVisible():
             self.video_cover_label.setVisible(False)
             self.vlc_player.play()
@@ -1122,11 +1115,9 @@ class LivePhotoPlayer(QMainWindow):
         self.is_playing = False
         self.play_pause_btn.setText("▶️ 播放")
         if self.is_live_photo:
-            # 实况照片：播放结束回到图片视图
             self.stacked.setCurrentWidget(self.image_scroll)
             self.status_text.setText("✅ 播放结束")
         else:
-            # 外部视频：播放结束后调用 stop_playback_async 回到封面
             self.stop_playback_async()
 
     # ---------------------- 关闭照片（保留） ----------------------
@@ -1201,6 +1192,15 @@ class LivePhotoPlayer(QMainWindow):
     def _on_image_loaded(self, pixmap, file_path, seq):
         if seq != self.load_seq:
             return
+        # 自动播放模式下，仍然设置图片（但不切换到图片视图），以便播放结束后能显示
+        if self.auto_play_mode and self.is_live_photo:
+            if not pixmap.isNull():
+                self.image_view.set_pixmap(pixmap)  # 设置图片，但不切换页面
+                self.update_file_info_label(file_path)
+            else:
+                self.status_text.setText("❌ 图片加载失败")
+            return
+        # 手动播放模式，正常显示图片
         if not pixmap.isNull():
             self.image_view.set_pixmap(pixmap)
             self.stacked.setCurrentWidget(self.image_scroll)
@@ -1225,10 +1225,16 @@ class LivePhotoPlayer(QMainWindow):
             media.parse()
             self.video_duration = media.get_duration()
             self.status_text.setText(f"✅ 实况视频就绪 ({self.video_duration//1000}秒)")
+            # 自动播放模式下，直接播放视频
+            if self.auto_play_mode and self.is_live_photo:
+                QTimer.singleShot(10, self.toggle_play)  # 极短延迟确保UI稳定
         else:
             self.video_extracted = False
             self.play_pause_btn.setEnabled(False)
             self.status_text.setText("⚠️ 未检测到实况视频")
+            # 如果自动播放模式下无视频，且之前没有显示图片，则显示图片
+            if self.auto_play_mode and self.is_live_photo:
+                self.stacked.setCurrentWidget(self.image_scroll)
 
     def _on_load_finished(self, seq):
         if seq != self.load_seq:
@@ -1372,6 +1378,7 @@ class LivePhotoPlayer(QMainWindow):
     # ---------------------- 右键菜单 ----------------------
     def contextMenuEvent(self, event):
         menu = QMenu(self)
+
         menu.addAction("打开文件", self.open_file_dialog)
         menu.addAction("恢复大小", self.reset_to_initial_state)
         menu.addAction("初始状态", self.initialize_app)
@@ -1379,6 +1386,18 @@ class LivePhotoPlayer(QMainWindow):
         menu.addSeparator()
         menu.addAction("上一张", self.previous_image)
         menu.addAction("下一张", self.next_image)
+
+        # 自动播放/点击播放切换项
+        if self.auto_play_mode:
+            auto_play_action = QAction("点击播放", self)
+            auto_play_action.setToolTip("切换为点击播放（手动播放）")
+            auto_play_action.triggered.connect(self.toggle_auto_play)
+        else:
+            auto_play_action = QAction("自动播放", self)
+            auto_play_action.setToolTip("切换为自动播放（切换照片时自动播放实况）")
+            auto_play_action.triggered.connect(self.toggle_auto_play)
+        menu.addAction(auto_play_action)
+
         menu.addSeparator()
         menu.addAction("导出照片", self.export_photo)
         menu.addAction("导出视频", self.export_video)
@@ -1390,6 +1409,14 @@ class LivePhotoPlayer(QMainWindow):
         menu.addAction("退出", self.quit_app)
         menu.exec_(event.globalPos())
 
+    def toggle_auto_play(self):
+        self.auto_play_mode = not self.auto_play_mode
+        config.set_auto_play(self.auto_play_mode)
+        mode_text = "自动播放" if self.auto_play_mode else "点击播放"
+        self.show_temp_message(f"已切换为{mode_text}模式", 2000)
+        logger.info(f"自动播放模式切换为: {mode_text}")
+
+    # ---------------------- 文件对话框 ----------------------
     def open_file_dialog(self):
         last_dir = config.get_last_dir()
         if not last_dir or not os.path.exists(last_dir):
@@ -1460,7 +1487,9 @@ def main():
     font = QFont("Segoe UI", 9)
     app.setFont(font)
 
-    window = LivePhotoPlayer()
+    # 支持命令行参数（拖拽文件到 EXE 图标）
+    initial_file = sys.argv[1] if len(sys.argv) > 1 else None
+    window = LivePhotoPlayer(initial_file)
     window.show()
     window.raise_()
     window.activateWindow()
