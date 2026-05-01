@@ -26,6 +26,7 @@ You can obtain the VLC components from the following sources:
   ↓↓↓
   
   [VLC组件下载地址](https://github.com/createacode/LivePhotoPlayer/releases/download/V3.18.0/vlc_up.zip)
+  
 
 > **️ Important / 重要提示:**
 > After downloading, ensure the `libvlc.dll`, `libvlccore.dll`, and the `plugins` folder are placed in the correct directory structure as shown below.
