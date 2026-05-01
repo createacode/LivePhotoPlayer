@@ -20,7 +20,8 @@ You can obtain the VLC components from the following sources:
   [Download VLC for Windows](https://www.videolan.org/vlc/download-windows.html)
 - **Releases Page / Releases 页面:**
 
-  Check the repository's "Releases" section for pre-packaged dependencies.请查看本仓库的 "Releases" 页面以获取打包好的依赖文件。
+  Check the repository's "Releases" section for pre-packaged dependencies.
+  请查看本仓库的 "Releases" 页面以获取打包好的依赖文件。
   
   ↓↓↓
   
