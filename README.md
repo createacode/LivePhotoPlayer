@@ -259,7 +259,7 @@ pyinstaller App13324.spec
 
 ## 11. 特别说明
 
-- 本项目为https://github.com/createacode/shikuangtu的重构项目，版本号延续之前。
+- 本项目为https://github.com/createacode/shikuangtu 的重构项目，版本号延续之前。
 
 - ---
 
