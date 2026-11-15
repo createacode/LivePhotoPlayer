@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.Python
+
+# 虚拟环境
+.venv/
+venv/
+
+# 构建产物
+build/
+dist/
+release/
+*.spec
+*.manifest
+
+# 缓存与测试产物
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# 运行期产物（配置、日志由程序生成）
+logs/*.log
+logs/crash_*.log
+config/config.json
+config/config.json.bak
+config/config.json.corrupt
+config/config.json.tmp
+
+# 导出目录
+照片/
+视频/
+
+# 收藏副本目录（由程序生成）
+收藏/
+
+# 编辑器与系统
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 构建脚本产物
+scripts/version_info.txt
+
+# 本地参考资料与测试素材（不进入版本库与发布包）
+docs/demo/
+docs/develop/
+
+
+# 本地截图（含测试照片内容，禁止入库或推送）
+docs/screenshots/
+
