@@ -1,0 +1,104 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling>=1.27"]
+
+[project]
+name = "livephoto-player"
+description = "实况照片播放器：播放手机实况照片内嵌视频、浏览图片与视频的 Windows 桌面工具"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "XAF" }]
+keywords = ["live-photo", "heic", "video", "pyside6", "windows"]
+classifiers = [
+  "Environment :: Win32 (MS Windows)",
+  "Intended Audience :: End Users/Desktop",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Multimedia :: Graphics :: Viewers",
+]
+dynamic = ["version"]
+dependencies = [
+  "pillow==13.0.0",
+  "pillow-heif==1.8.1",
+  "pyside6-addons==6.12.0",
+  "pyside6-essentials==6.12.0",
+]
+
+[project.optional-dependencies]
+# 仅用于开发与打包，运行时不安装
+dev = [
+  "mypy==2.4.1",
+  "pyinstaller==6.22.3",
+  "pytest==9.2.0",
+  "pytest-cov==7.1.0",
+  "pytest-qt==4.5.0",
+  "ruff==0.17.5",
+]
+
+[project.gui-scripts]
+livephoto-player = "livephoto_player.app.main:main"
+
+[tool.hatch.version]
+path = "src/livephoto_player/core/version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/livephoto_player"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["docs", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "C4", "RUF", "ANN", "PTH", "TID", "BLE"]
+ignore = [
+  "ANN401",
+  "RUF001",
+  "RUF002",
+  "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN", "S101", "PLR2004", "N802"]
+"scripts/*" = ["ANN", "T201", "PTH"]
+"src/livephoto_player/ui/*" = ["N802", "N815"]
+# QIODevice / QAbstractListModel 的虚函数必须保留 Qt 的驼峰命名
+"src/livephoto_player/services/tail_device.py" = ["N802"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["livephoto_player"]
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+packages = ["livephoto_player"]
+strict = true
+warn_unused_ignores = true
+show_error_codes = true
+exclude = ["src/livephoto_player/ui/.*"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+qt_api = "pyside6"
+
+[tool.coverage.run]
+source = ["src/livephoto_player"]
+omit = ["src/livephoto_player/__main__.py"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.1",
+    "pyinstaller>=6.22.3",
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "pytest-qt>=4.5.0",
+    "ruff>=0.17.5",
+]

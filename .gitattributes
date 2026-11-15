@@ -1,0 +1,21 @@
+# 统一使用 LF，Windows 批处理与 PowerShell 脚本保留 CRLF
+* text=auto eol=lf
+
+*.py text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制资源不做换行转换
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.heic binary
+*.mp4 binary
+*.exe binary
+*.dll binary
