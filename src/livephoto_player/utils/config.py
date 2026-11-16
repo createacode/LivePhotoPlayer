@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from livephoto_player.core.enhance import DEFAULT_QUALITY, normalize_quality
 from livephoto_player.utils.logger import get_logger
 from livephoto_player.utils.paths import config_dir
 
@@ -57,6 +58,7 @@ class AppConfig:
     auto_play: bool = False
     show_file_list: bool = True
     order_mode: str = "timeline"
+    quality: str = "standard"
     log_level: str = "INFO"
     tray_hint_shown: bool = False
     geo: GeoConfig = field(default_factory=GeoConfig)
@@ -76,6 +78,7 @@ class AppConfig:
             "auto_play": self.auto_play,
             "show_file_list": self.show_file_list,
             "order_mode": self.order_mode,
+            "quality": self.quality,
             "log_level": self.log_level,
             "tray_hint_shown": self.tray_hint_shown,
             "geo": {
@@ -114,6 +117,8 @@ class AppConfig:
         config.show_file_list = _as_bool(raw.get("show_file_list"), True)
         mode = _as_str(raw.get("order_mode"), "timeline")
         config.order_mode = mode if mode in {"name", "timeline"} else "timeline"
+        quality = _as_str(raw.get("quality"), DEFAULT_QUALITY)
+        config.quality = normalize_quality(quality)
         config.log_level = _as_str(raw.get("log_level"), "INFO").upper()
         config.tray_hint_shown = _as_bool(raw.get("tray_hint_shown"), False)
 

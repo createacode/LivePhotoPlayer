@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 __software_name__ = "实况照片播放器"
-__version__ = "4.6.2"
+__version__ = "4.8.0"
 __author__ = "XAF"
 __copyright_ym__ = "2026.11"
 

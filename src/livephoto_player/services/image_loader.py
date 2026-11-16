@@ -16,6 +16,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QRunnable, QSize, Qt, QThreadPool, Signal
 from PySide6.QtGui import QImage, QImageReader
 
+from livephoto_player.core.enhance import to_srgb
 from livephoto_player.core.livephoto import find_video_span
 from livephoto_player.core.models import ImagePayload
 from livephoto_player.services.browser import IMAGE_EXTENSIONS
@@ -107,16 +108,17 @@ def _read_scaled(reader: QImageReader, source: QSize, target_width: int) -> QIma
         while factor < 8 and source.width() // factor > target_width * 2:
             factor *= 2
         reader.setScaledSize(QSize(source.width() // factor, source.height() // factor))
-    image = reader.read()
+    image = to_srgb(reader.read())
     if image.isNull() or target_width <= 0 or image.width() <= target_width:
         return image
     ratio = target_width / image.width()
-    return image.scaled(
+    scaled = image.scaled(
         target_width,
         max(1, round(image.height() * ratio)),
         Qt.AspectRatioMode.IgnoreAspectRatio,
         Qt.TransformationMode.SmoothTransformation,
     )
+    return to_srgb(scaled)
 
 
 def decode_image(path: Path, target_width: int, *, full: bool = False) -> tuple[QImage, QSize]:

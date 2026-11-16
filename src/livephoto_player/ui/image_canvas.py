@@ -32,6 +32,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QWidget
 
+from livephoto_player.core.enhance import sharpen, to_srgb  # noqa: F401
 from livephoto_player.ui import theme
 from livephoto_player.ui.icons import zone_at, zone_cursor
 
@@ -56,6 +57,13 @@ class ImageCanvas(QWidget):
         self._source_size = QSize()
         self._zoom = 1.0
         self._fit_zoom = 1.0
+        self._quality = "standard"
+        self._sharpen_count = 0
+        # 锐化较贵（1.4MP 约 70ms），缩放停下后再补，避免拖慢交互
+        self._sharpen_timer = QTimer(self)
+        self._sharpen_timer.setSingleShot(True)
+        self._sharpen_timer.setInterval(160)
+        self._sharpen_timer.timeout.connect(self._apply_sharpen)
         self._pan = QPointF(0.0, 0.0)
         self._scaled: QPixmap | None = None
         self._scaled_key: tuple[int, int, int, bool] | None = None
@@ -214,6 +222,9 @@ class ImageCanvas(QWidget):
         return float(self._source_size.width()), float(self._source_size.height())
 
     def _invalidate_cache(self) -> None:
+        self._pending_sharpen = None
+        if hasattr(self, "_sharpen_timer"):
+            self._sharpen_timer.stop()
         self._scaled = None
         self._scaled_key = None
 
@@ -305,6 +316,37 @@ class ImageCanvas(QWidget):
             dpr,
         )
 
+    def set_quality(self, quality: str) -> None:
+        """切换画质档位（影响缩小显示时的锐化强度）。"""
+        self._quality = quality
+        self._invalidate_cache()
+        self.update()
+
+    def sharpen_ready(self) -> bool:
+        """当前缓存是否已是锐化后的版本（供测试断言）。"""
+        return getattr(self, "_pending_sharpen", None) is None
+
+    def _needs_sharpen(self) -> bool:
+        """只在缩小显示且档位不是 raw 时锐化；1:1 与放大保持原生像素。"""
+        if self._image is None or self._quality == "raw":
+            return False
+        return self._scaled is not None and self._scaled.width() < self._image.width()
+
+    def _apply_sharpen(self) -> None:
+        """防抖后计算锐化版并替换缓存。"""
+        pending = getattr(self, "_pending_sharpen", None)
+        if pending is None or not self._needs_sharpen():
+            return
+        self._pending_sharpen = None
+        sharpened = sharpen(pending, self._quality)
+        if sharpened is pending:
+            return
+        pixmap = QPixmap.fromImage(sharpened)
+        pixmap.setDevicePixelRatio(self.devicePixelRatioF() or 1.0)
+        self._scaled = pixmap
+        self._sharpen_count += 1
+        self.update()
+
     def _ensure_scaled(self) -> QPixmap | None:
         """按目标矩形的像素尺寸缓存一张位图；只在图像或几何变化时重算。"""
         if self._image is None or self._image.isNull():
@@ -318,12 +360,17 @@ class ImageCanvas(QWidget):
             if self._smooth
             else Qt.TransformationMode.FastTransformation
         )
-        pixmap = QPixmap.fromImage(
-            self._image.scaled(target_w, target_h, Qt.AspectRatioMode.IgnoreAspectRatio, mode)
-        )
+        scaled = self._image.scaled(target_w, target_h, Qt.AspectRatioMode.IgnoreAspectRatio, mode)
+        pixmap = QPixmap.fromImage(scaled)
         pixmap.setDevicePixelRatio(dpr)
         self._scaled = pixmap
         self._scaled_key = key
+        # 锐化较贵（1.4MP 约 70ms），先返回快图，等缩放停稳再补
+        self._pending_sharpen = scaled.copy() if scaled.width() < self._image.width() else None
+        if self._pending_sharpen is not None and self._quality != "raw":
+            self._sharpen_timer.start()
+        else:
+            self._pending_sharpen = None
         return self._scaled
 
     def paintEvent(self, event: QPaintEvent) -> None:

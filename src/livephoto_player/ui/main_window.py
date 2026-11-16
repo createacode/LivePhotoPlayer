@@ -10,6 +10,7 @@ from pathlib import Path
 from PySide6.QtCore import QPoint, QSize, Qt, QThread, QTimer, QUrl
 from PySide6.QtGui import (
     QAction,
+    QActionGroup,
     QCloseEvent,
     QCursor,
     QDesktopServices,
@@ -40,6 +41,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from livephoto_player.core.enhance import QUALITY_LABELS
 from livephoto_player.core.format import UNKNOWN_PLACE, format_short_day, format_size
 from livephoto_player.core.models import (
     MediaItem,
@@ -164,6 +166,7 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(theme.STYLE_SHEET)
 
         self._canvas = ImageCanvas(self)
+        self._canvas.set_quality(self._config.quality)
         self._canvas.set_status_text("拖入照片 / 视频，或点击「打开文件」")
         self._surface = VideoSurface(self)
         self._engine.attach_video_output(self._surface.video_widget())
@@ -363,6 +366,13 @@ class MainWindow(QMainWindow):
         for button in toolbar.findChildren(QToolButton):
             button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
+    def _set_quality(self, quality: str) -> None:
+        """切换画质档位并持久化。"""
+        self._config.quality = quality
+        self._canvas.set_quality(quality)
+        self._persist()
+        self._toast.show_message(f"画质：{QUALITY_LABELS.get(quality, quality)}")
+
     def _build_more_menu(self, parent: QWidget) -> QMenu:
         menu = QMenu(parent)
         menu.addAction(self._action_timeline)
@@ -384,6 +394,17 @@ class MainWindow(QMainWindow):
         menu.addAction(self._action_update)
         menu.addAction(self._action_about)
         menu.addAction(self._action_quit)
+        quality_menu = menu.addMenu("画质")
+        group = QActionGroup(quality_menu)
+        group.setExclusive(True)
+        for key, label in QUALITY_LABELS.items():
+            action = QAction(label, quality_menu)
+            action.setCheckable(True)
+            action.setChecked(key == self._config.quality)
+            action.triggered.connect(lambda _checked=False, k=key: self._set_quality(k))
+            group.addAction(action)
+            quality_menu.addAction(action)
+
         return menu
 
     def _build_statusbar(self) -> None:
